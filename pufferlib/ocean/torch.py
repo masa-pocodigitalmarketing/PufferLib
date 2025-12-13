@@ -963,3 +963,58 @@ class G2048(nn.Module):
         logits = self.decoder(hidden)
         values = self.value(hidden)
         return logits, values
+
+
+class IKSolverPolicy(nn.Module):
+    """
+    Policy network for IK Solver environment with continuous actions.
+    
+    The network takes observations (joint angles, velocities, end-effector errors,
+    priorities, etc.) and outputs delta joint angles to achieve IK targets.
+    """
+    def __init__(self, env, hidden_size=256, **kwargs):
+        super().__init__()
+        self.hidden_size = hidden_size
+        self.is_continuous = True
+        
+        num_obs = np.prod(env.single_observation_space.shape)
+        num_actions = env.single_action_space.shape[0]
+        
+        self.encoder = nn.Sequential(
+            pufferlib.pytorch.layer_init(nn.Linear(num_obs, hidden_size)),
+            nn.LayerNorm(hidden_size),
+            nn.GELU(),
+            pufferlib.pytorch.layer_init(nn.Linear(hidden_size, hidden_size)),
+            nn.LayerNorm(hidden_size),
+            nn.GELU(),
+            pufferlib.pytorch.layer_init(nn.Linear(hidden_size, hidden_size)),
+            nn.GELU(),
+        )
+        
+        self.decoder_mean = pufferlib.pytorch.layer_init(
+            nn.Linear(hidden_size, num_actions), std=0.01)
+        self.decoder_logstd = nn.Parameter(torch.zeros(1, num_actions))
+        
+        self.value_fn = pufferlib.pytorch.layer_init(
+            nn.Linear(hidden_size, 1), std=1.0)
+
+    def forward(self, observations, state=None):
+        hidden = self.encode_observations(observations)
+        actions, value = self.decode_actions(hidden)
+        return actions, value
+
+    def forward_train(self, x, state=None):
+        return self.forward(x, state)
+
+    def encode_observations(self, observations, state=None):
+        batch_size = observations.shape[0]
+        observations = observations.view(batch_size, -1).float()
+        return self.encoder(observations)
+
+    def decode_actions(self, hidden):
+        mean = self.decoder_mean(hidden)
+        logstd = self.decoder_logstd.expand_as(mean)
+        std = torch.exp(logstd)
+        probs = torch.distributions.Normal(mean, std)
+        value = self.value_fn(hidden)
+        return probs, value
