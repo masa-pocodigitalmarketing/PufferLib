@@ -590,4 +590,102 @@ void c_render(IKSolver* env) {
 void c_close(IKSolver* env) {
 }
 
+void set_target_ee_position(IKSolver* env, int ee_index, float x, float y, float z) {
+    if (ee_index >= 0 && ee_index < NUM_END_EFFECTORS) {
+        env->target_ee_positions[ee_index] = (Vec3){x, y, z};
+    }
+}
+
+void set_target_ee_priority(IKSolver* env, int ee_index, float priority) {
+    if (ee_index >= 0 && ee_index < NUM_END_EFFECTORS) {
+        env->target_ee_priorities[ee_index] = priority;
+    }
+}
+
+void set_target_com(IKSolver* env, float x, float y, float z) {
+    env->target_com = (Vec3){x, y, z};
+}
+
+void set_target_com_priority(IKSolver* env, float priority) {
+    env->target_com_priority = priority;
+}
+
+void set_reference_pose(IKSolver* env, float* pose, int num_joints) {
+    int n = (num_joints < NUM_JOINTS) ? num_joints : NUM_JOINTS;
+    for (int i = 0; i < n; i++) {
+        env->reference_pose[i] = pose[i];
+    }
+}
+
+void set_reference_pose_priority(IKSolver* env, float priority) {
+    env->reference_pose_priority = priority;
+}
+
+void get_joint_world_positions(IKSolver* env, float* out_positions) {
+    for (int i = 0; i < NUM_JOINTS; i++) {
+        out_positions[i * 3 + 0] = env->global_transforms[i].position.x;
+        out_positions[i * 3 + 1] = env->global_transforms[i].position.y;
+        out_positions[i * 3 + 2] = env->global_transforms[i].position.z;
+    }
+}
+
+void get_joint_world_rotations(IKSolver* env, float* out_rotations) {
+    for (int i = 0; i < NUM_JOINTS; i++) {
+        out_rotations[i * 4 + 0] = env->global_transforms[i].rotation.w;
+        out_rotations[i * 4 + 1] = env->global_transforms[i].rotation.x;
+        out_rotations[i * 4 + 2] = env->global_transforms[i].rotation.y;
+        out_rotations[i * 4 + 3] = env->global_transforms[i].rotation.z;
+    }
+}
+
+void get_ee_positions(IKSolver* env, float* out_positions) {
+    for (int i = 0; i < NUM_END_EFFECTORS; i++) {
+        out_positions[i * 3 + 0] = env->ee_positions[i].x;
+        out_positions[i * 3 + 1] = env->ee_positions[i].y;
+        out_positions[i * 3 + 2] = env->ee_positions[i].z;
+    }
+}
+
+void get_target_ee_positions(IKSolver* env, float* out_positions) {
+    for (int i = 0; i < NUM_END_EFFECTORS; i++) {
+        out_positions[i * 3 + 0] = env->target_ee_positions[i].x;
+        out_positions[i * 3 + 1] = env->target_ee_positions[i].y;
+        out_positions[i * 3 + 2] = env->target_ee_positions[i].z;
+    }
+}
+
+void get_com_position(IKSolver* env, float* out_position) {
+    out_position[0] = env->center_of_mass.x;
+    out_position[1] = env->center_of_mass.y;
+    out_position[2] = env->center_of_mass.z;
+}
+
+void get_target_com_position(IKSolver* env, float* out_position) {
+    out_position[0] = env->target_com.x;
+    out_position[1] = env->target_com.y;
+    out_position[2] = env->target_com.z;
+}
+
+int get_joint_parent(IKSolver* env, int joint_index) {
+    if (joint_index >= 0 && joint_index < NUM_JOINTS) {
+        return env->joint_defs[joint_index].parent;
+    }
+    return -1;
+}
+
+int get_num_joints(void) {
+    return NUM_JOINTS;
+}
+
+int get_num_end_effectors(void) {
+    return NUM_END_EFFECTORS;
+}
+
+int get_ee_joint_index(IKSolver* env, int ee_index) {
+    if (ee_index >= 0 && ee_index < NUM_END_EFFECTORS) {
+        return env->ee_joint_indices[ee_index];
+    }
+    return -1;
+}
+
 #endif
