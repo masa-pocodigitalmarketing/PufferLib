@@ -116,6 +116,60 @@ class IKSolver(pufferlib.PufferEnv):
     def close(self):
         binding.vec_close(self.c_envs)
 
+    def get_state(self, env_idx=0):
+        """Get the current state of the environment for visualization.
+        
+        Returns a dict containing:
+            - joint_positions: (NUM_JOINTS * 3,) world positions of all joints
+            - joint_rotations: (NUM_JOINTS * 4,) world rotations (quaternions) of all joints
+            - ee_positions: (NUM_END_EFFECTORS * 3,) current end-effector positions
+            - target_ee_positions: (NUM_END_EFFECTORS * 3,) target end-effector positions
+            - com_position: (3,) current center of mass position
+            - target_com_position: (3,) target center of mass position
+            - joint_parents: (NUM_JOINTS,) parent index for each joint (-1 for root)
+            - ee_joint_indices: (NUM_END_EFFECTORS,) joint index for each end-effector
+            - num_joints: int
+            - num_end_effectors: int
+        """
+        return binding.vec_get(self.c_envs, env_idx)
+
+    def set_targets(
+        self,
+        env_idx=0,
+        target_ee_positions=None,
+        target_ee_priorities=None,
+        target_com=None,
+        target_com_priority=None,
+        reference_pose=None,
+        reference_pose_priority=None,
+    ):
+        """Set targets for the IK solver.
+        
+        Args:
+            env_idx: Index of the environment to set targets for
+            target_ee_positions: (NUM_END_EFFECTORS * 3,) target positions for end-effectors
+            target_ee_priorities: (NUM_END_EFFECTORS,) priorities for each end-effector
+            target_com: (3,) target center of mass position
+            target_com_priority: float, priority for center of mass target
+            reference_pose: (NUM_JOINTS,) reference joint angles
+            reference_pose_priority: float, priority for reference pose
+        """
+        kwargs = {}
+        if target_ee_positions is not None:
+            kwargs['target_ee_positions'] = np.asarray(target_ee_positions, dtype=np.float32)
+        if target_ee_priorities is not None:
+            kwargs['target_ee_priorities'] = np.asarray(target_ee_priorities, dtype=np.float32)
+        if target_com is not None:
+            kwargs['target_com'] = np.asarray(target_com, dtype=np.float32)
+        if target_com_priority is not None:
+            kwargs['target_com_priority'] = float(target_com_priority)
+        if reference_pose is not None:
+            kwargs['reference_pose'] = np.asarray(reference_pose, dtype=np.float32)
+        if reference_pose_priority is not None:
+            kwargs['reference_pose_priority'] = float(reference_pose_priority)
+        
+        binding.vec_put(self.c_envs, env_idx, **kwargs)
+
 
 def test_performance(timeout=10, atn_cache=1024):
     """Benchmark environment performance."""
